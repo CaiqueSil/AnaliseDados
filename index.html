@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Manager</title>
+    <!-- Pico CSS for instant beautiful styling -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { padding: 20px; }
+        .actions { display: flex; gap: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <h1>📚 Article Manager</h1>
+        
+        <!-- CRUD FORM -->
+        <article>
+            <header><h2 id="form-title">Add New Article</h2></header>
+            <form id="article-form">
+                <input type="hidden" id="article-id">
+                
+                <div class="grid">
+                    <label>
+                        Title
+                        <input type="text" id="title" required placeholder="E.g., Intro to Databases">
+                    </label>
+                    <label>
+                        Year
+                        <input type="number" id="year" required placeholder="2024">
+                    </label>
+                </div>
+
+                <div class="grid">
+                    <label>
+                        DOI
+                        <input type="text" id="doi" placeholder="10.1000/182">
+                    </label>
+                    <label>
+                        Document Type
+                        <select id="doc-type">
+                            <option value="Journal">Journal</option>
+                            <option value="Conference">Conference</option>
+                            <option value="Book">Book</option>
+                        </select>
+                    </label>
+                </div>
+
+                <button type="submit" id="submit-btn">Save Article</button>
+                <button type="button" id="cancel-btn" class="secondary hidden" onclick="resetForm()">Cancel Edit</button>
+            </form>
+        </article>
+
+        <!-- DATA TABLE -->
+        <h2>Saved Articles</h2>
+        <div class="overflow-auto">
+            <table class="striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Year</th>
+                        <th>DOI</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Data will be injected here via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. INITIALIZE SUPABASE ---
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace this!
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace this!
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- DOM Elements ---
+        const form = document.getElementById('article-form');
+        const tableBody = document.getElementById('table-body');
+        const formTitle = document.getElementById('form-title');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        // --- 2. READ (FETCH DATA) ---
+        async function fetchArticles() {
+            tableBody.innerHTML = '<tr><td colspan="6" aria-busy="true">Loading...</td></tr>';
+            
+            // Note: table and column names must exactly match your Supabase database (case-sensitive)
+            const { data, error } = await supabase
+                .from('Article')
+                .select('*')
+                .order('ID', { ascending: false });
+
+            if (error) {
+                console.error("Error fetching data:", error);
+                tableBody.innerHTML = `<tr><td colspan="6">Error loading data. Check console.</td></tr>`;
+                return;
+            }
+
+            renderTable(data);
+        }
+
+        // Render data into HTML table
+        function renderTable(articles) {
+            tableBody.innerHTML = '';
+            if(articles.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6">No articles found. Add one above!</td></tr>';
+                return;
+            }
+
+            articles.forEach(article => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${article.ID}</td>
+                    <td>${article.Title || '-'}</td>
+                    <td>${article.Year || '-'}</td>
+                    <td>${article.DOI || '-'}</td>
+                    <td>${article.Document_Type || '-'}</td>
+                    <td class="actions">
+                        <button class="outline" onclick="editArticle(${article.ID}, '${article.Title}', ${article.Year}, '${article.DOI}', '${article.Document_Type}')">Edit</button>
+                        <button class="outline contrast" onclick="deleteArticle(${article.ID})">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- 3. CREATE OR UPDATE ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent page reload
+            
+            // Get values from inputs
+            const id = document.getElementById('article-id').value;
+            const articleData = {
+                Title: document.getElementById('title').value,
+                Year: parseInt(document.getElementById('year').value),
+                DOI: document.getElementById('doi').value,
+                Document_Type: document.getElementById('doc-type').value
+            };
+
+            if (id) {
+                // UPDATE if ID exists in the hidden field
+                const { error } = await supabase.from('Article').update(articleData).eq('ID', id);
+                if (error) alert("Error updating: " + error.message);
+            } else {
+                // INSERT if no ID
+                const { error } = await supabase.from('Article').insert([articleData]);
+                if (error) alert("Error creating: " + error.message);
+            }
+
+            resetForm();
+            fetchArticles(); // Refresh table
+        });
+
+        // --- 4. DELETE ---
+        window.deleteArticle = async (id) => {
+            if (confirm('Are you sure you want to delete this article?')) {
+                const { error } = await supabase.from('Article').delete().eq('ID', id);
+                if (error) alert("Error deleting: " + error.message);
+                else fetchArticles(); // Refresh table
+            }
+        }
+
+        // --- Helpers ---
+        window.editArticle = (id, title, year, doi, docType) => {
+            document.getElementById('article-id').value = id;
+            document.getElementById('title').value = title !== 'null' ? title : '';
+            document.getElementById('year').value = year !== 'null' ? year : '';
+            document.getElementById('doi').value = doi !== 'null' ? doi : '';
+            document.getElementById('doc-type').value = docType !== 'null' ? docType : 'Journal';
+            
+            formTitle.innerText = "Edit Article (ID: " + id + ")";
+            cancelBtn.classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        window.resetForm = () => {
+            form.reset();
+            document.getElementById('article-id').value = '';
+            formTitle.innerText = "Add New Article";
+            cancelBtn.classList.add('hidden');
+        }
+
+        // Initialize App by fetching data
+        fetchArticles();
+    </script>
+</body>
+</html>
