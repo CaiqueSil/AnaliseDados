@@ -1,199 +1,48 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="pt-BR" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Article Manager</title>
-    <!-- Pico CSS for instant beautiful styling -->
+    <title>AnlATV_BD - Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <!-- Supabase JS Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { padding: 20px; }
-        .actions { display: flex; gap: 10px; }
-        .hidden { display: none; }
+        body { padding: 40px 20px; display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: var(--pico-background-color); }
+        .header-section { text-align: center; margin-bottom: 3rem; }
+        .header-section h1 { font-size: 3rem; margin-bottom: 0.5rem; color: var(--pico-primary); }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; max-width: 1000px; width: 100%;}
+        .menu-card { text-align: center; text-decoration: none; color: inherit; display: block; }
+        .menu-card article { transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%; cursor: pointer; }
+        .menu-card article:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-color: var(--pico-primary); }
+        .icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
     </style>
 </head>
 <body>
-
     <main class="container">
-        <h1>📚 Article Manager</h1>
-        
-        <!-- CRUD FORM -->
-        <article>
-            <header><h2 id="form-title">Add New Article</h2></header>
-            <form id="article-form">
-                <input type="hidden" id="article-id">
-                
-                <div class="grid">
-                    <label>
-                        Title
-                        <input type="text" id="title" required placeholder="E.g., Intro to Databases">
-                    </label>
-                    <label>
-                        Year
-                        <input type="number" id="year" required placeholder="2024">
-                    </label>
-                </div>
+        <header class="header-section">
+            <h1>📚 AnlATV_BD</h1>
+            <p>Database Management System</p>
+        </header>
 
-                <div class="grid">
-                    <label>
-                        DOI
-                        <input type="text" id="doi" placeholder="10.1000/182">
-                    </label>
-                    <label>
-                        Document Type
-                        <select id="doc-type">
-                            <option value="Journal">Journal</option>
-                            <option value="Conference">Conference</option>
-                            <option value="Book">Book</option>
-                        </select>
-                    </label>
-                </div>
-
-                <button type="submit" id="submit-btn">Save Article</button>
-                <button type="button" id="cancel-btn" class="secondary hidden" onclick="resetForm()">Cancel Edit</button>
-            </form>
-        </article>
-
-        <!-- DATA TABLE -->
-        <h2>Saved Articles</h2>
-        <div class="overflow-auto">
-            <table class="striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Year</th>
-                        <th>DOI</th>
-                        <th>Type</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    <!-- Data will be injected here via JavaScript -->
-                </tbody>
-            </table>
+        <div class="menu-grid">
+            <a href="artigos.html" class="menu-card">
+                <article><span class="icon">📝</span><h2>Artigos</h2><p>Gerenciar artigos</p></article>
+            </a>
+            <a href="autores.html" class="menu-card">
+                <article><span class="icon">✍️</span><h2>Autores</h2><p>Ver lista de pesquisadores</p></article>
+            </a>
+            <a href="palavras-chave.html" class="menu-card">
+                <article><span class="icon">🔑</span><h2>Palavras-chave</h2><p>Termos mais comuns</p></article>
+            </a>
+            <a href="referencias.html" class="menu-card">
+                <article><span class="icon">📖</span><h2>Referências</h2><p>Controle de bibliografia</p></article>
+            </a>
+            <!-- NOVO BOTÃO DE IMPORTAR CSV -->
+            <a href="importar.html" class="menu-card">
+                <article style="background-color: var(--pico-primary-background); color: white;">
+                    <span class="icon">📤</span><h2 style="color: white;">Importar CSV</h2><p style="color: white;">Carregar base de dados Scopus/WoS</p>
+                </article>
+            </a>
         </div>
     </main>
-
-    <script>
-        // --- 1. INITIALIZE SUPABASE ---
-        const SUPABASE_URL = 'https://cjtbqzcbzrxkddndobfu.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqdGJxemNienJ4a2RkbmRvYmZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NDc3MzIsImV4cCI6MjA5NDIyMzczMn0.agrY1BcpmHGuX7Dp_QkD_2s5RZ0AhD1B6YVpAuccihA'; 
-        
-        // CORREÇÃO: Renomeado de "supabase" para "supabaseClient" para evitar conflito com a biblioteca
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // --- DOM Elements ---
-        const form = document.getElementById('article-form');
-        const tableBody = document.getElementById('table-body');
-        const formTitle = document.getElementById('form-title');
-        const cancelBtn = document.getElementById('cancel-btn');
-
-        // --- 2. READ (FETCH DATA) ---
-        async function fetchArticles() {
-            tableBody.innerHTML = '<tr><td colspan="6" aria-busy="true">Loading...</td></tr>';
-            
-            // CORREÇÃO: Usando supabaseClient
-            const { data, error } = await supabaseClient
-                .from('Article')
-                .select('*')
-                .order('ID', { ascending: false });
-
-            if (error) {
-                console.error("Error fetching data:", error);
-                tableBody.innerHTML = `<tr><td colspan="6">Error loading data. Check console.</td></tr>`;
-                return;
-            }
-
-            renderTable(data);
-        }
-
-        // Render data into HTML table
-        function renderTable(articles) {
-            tableBody.innerHTML = '';
-            if(articles.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6">No articles found. Add one above!</td></tr>';
-                return;
-            }
-
-            articles.forEach(article => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${article.ID}</td>
-                    <td>${article.Title || '-'}</td>
-                    <td>${article.Year || '-'}</td>
-                    <td>${article.DOI || '-'}</td>
-                    <td>${article.Document_Type || '-'}</td>
-                    <td class="actions">
-                        <button class="outline" onclick="editArticle(${article.ID}, '${article.Title}', ${article.Year}, '${article.DOI}', '${article.Document_Type}')">Edit</button>
-                        <button class="outline contrast" onclick="deleteArticle(${article.ID})">Delete</button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        }
-
-        // --- 3. CREATE OR UPDATE ---
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Prevent page reload
-            
-            // Get values from inputs
-            const id = document.getElementById('article-id').value;
-            const articleData = {
-                Title: document.getElementById('title').value,
-                Year: parseInt(document.getElementById('year').value),
-                DOI: document.getElementById('doi').value,
-                Document_Type: document.getElementById('doc-type').value
-            };
-
-            if (id) {
-                // UPDATE if ID exists in the hidden field (CORREÇÃO: Usando supabaseClient)
-                const { error } = await supabaseClient.from('Article').update(articleData).eq('ID', id);
-                if (error) alert("Error updating: " + error.message);
-            } else {
-                // INSERT if no ID (CORREÇÃO: Usando supabaseClient)
-                const { error } = await supabaseClient.from('Article').insert([articleData]);
-                if (error) alert("Error creating: " + error.message);
-            }
-
-            resetForm();
-            fetchArticles(); // Refresh table
-        });
-
-        // --- 4. DELETE ---
-        window.deleteArticle = async (id) => {
-            if (confirm('Are you sure you want to delete this article?')) {
-                // CORREÇÃO: Usando supabaseClient
-                const { error } = await supabaseClient.from('Article').delete().eq('ID', id);
-                if (error) alert("Error deleting: " + error.message);
-                else fetchArticles(); // Refresh table
-            }
-        }
-
-        // --- Helpers ---
-        window.editArticle = (id, title, year, doi, docType) => {
-            document.getElementById('article-id').value = id;
-            document.getElementById('title').value = title !== 'null' ? title : '';
-            document.getElementById('year').value = year !== 'null' ? year : '';
-            document.getElementById('doi').value = doi !== 'null' ? doi : '';
-            document.getElementById('doc-type').value = docType !== 'null' ? docType : 'Journal';
-            
-            formTitle.innerText = "Edit Article (ID: " + id + ")";
-            cancelBtn.classList.remove('hidden');
-            window.scrollTo(0, 0);
-        }
-
-        window.resetForm = () => {
-            form.reset();
-            document.getElementById('article-id').value = '';
-            formTitle.innerText = "Add New Article";
-            cancelBtn.classList.add('hidden');
-        }
-
-        // Initialize App by fetching data
-        fetchArticles();
-    </script>
 </body>
 </html>
