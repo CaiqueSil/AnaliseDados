@@ -3,53 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Importar CSV - Scopus</title>
+    <title>Pipeline de Importação - Analytics Hub</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="global.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
     <style>
+        /* LAYOUT PRINCIPAL (Sidebar Fixa + Área de Conteúdo) */
+        body { margin: 0; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        
+        .app-layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            background-color: var(--pico-background-color);
+        }
+
+        .sidebar {
+            width: 320px;
+            background-color: white;
+            border-right: 1px solid #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+            z-index: 20;
+        }
+
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+        .sidebar-content { padding: 1.5rem; }
+        .sidebar-section-title { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em; margin-bottom: 1rem; }
+
+        .btn-sidebar {
+            width: 100%; text-align: left; justify-content: flex-start; padding: 0.75rem 1rem; font-size: 0.9rem;
+            margin-bottom: 0.5rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; background: white; color: #334155;
+            transition: all 0.2s ease; cursor: pointer;
+        }
+        .btn-sidebar:hover { background: #f1f5f9; border-color: #cbd5e1; transform: translateY(-1px); }
+        .btn-sidebar.active { border-left: 4px solid var(--pico-primary); font-weight: 600; color: var(--pico-primary); }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background-color: #f8fafc; }
+        .top-nav { background: white; padding: 1rem 2rem; border-bottom: 1px solid #cbd5e1; display: flex; align-items: center; justify-content: space-between; }
+
+        .grid-wrapper {
+            padding: 2rem;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* CARD DE IMPORTAÇÃO */
+        .import-card {
+            background: white; border: 1px solid #cbd5e1; border-radius: 1rem; padding: 2.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); width: 100%; max-width: 800px; margin-bottom: 2rem;
+        }
+
         .upload-area {
             border: 2px dashed #cbd5e1; border-radius: 1rem; padding: 3rem 2rem;
             text-align: center; background: #f8fafc; transition: all 0.2s;
             margin-bottom: 2rem;
         }
-        .upload-area:hover { border-color: var(--pico-primary); background: #f1f5f9; }
+        .upload-area:hover { border-color: var(--pico-primary); background: #eff6ff; }
         .upload-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
-        .progress-container { margin-top: 1.5rem; display: none; }
+        
+        .progress-container { margin-top: 1.5rem; display: none; background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; }
+        
+        /* CARD DE ZONA DE PERIGO (RESET DE BANCO) */
+        .danger-zone {
+            background: #fff5f5; border: 1px solid #fca5a5; border-radius: 1rem; padding: 2rem;
+            width: 100%; max-width: 800px; display: flex; flex-direction: column;
+        }
+        
+        .danger-header { display: flex; align-items: center; gap: 0.5rem; color: #dc2626; margin-bottom: 0.5rem; }
+        .danger-header h3 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #b91c1c; }
+        .danger-icon { font-size: 1.5rem; }
+
+        .btn-danger {
+            background: #ef4444; color: white; border-color: #dc2626; font-weight: 600; 
+            width: auto; align-self: flex-start; margin-top: 1rem;
+        }
+        .btn-danger:hover { background: #dc2626; border-color: #b91c1c; }
+
     </style>
 </head>
 <body>
-    <nav class="container top-nav">
-        <ul>
-            <li><strong>Analytics Hub</strong></li>
-            <li><a href="index.html">Dashboard</a></li>
-            <li><a href="artigos.html">Artigos</a></li>
-            <li><a href="importar.html" style="color: var(--pico-primary)">Importar</a></li>
-        </ul>
-    </nav>
-
-    <main class="container" style="max-width: 700px; padding-top: 2rem;">
-        <div class="card">
-            <h2 style="text-align: center; margin-bottom: 0.5rem;">📥 Importação de Dataset</h2>
-            <p style="text-align: center; color: #64748b; margin-bottom: 2rem;">Carregue o arquivo CSV extraído diretamente do Scopus</p>
-            
-            <div class="upload-area">
-                <span class="upload-icon">📄</span>
-                <input type="file" id="csv-file" accept=".csv" style="margin: 0 auto; max-width: 300px; display: block;" />
+    <div class="app-layout">
+        
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 style="margin: 0; font-size: 1.5rem; color: var(--pico-primary); font-weight: 800;">Analytics Hub</h2>
+                <p style="margin: 0; font-size: 0.85rem; color: #64748b;">ETL & Operações</p>
             </div>
-
-            <button id="import-btn" style="width: 100%; font-size: 1.1rem; padding: 1rem;">Iniciar Sincronização de Dados</button>
             
-            <div class="progress-container" id="progress-container">
-                <label id="status-text" style="font-weight: 600; color: var(--pico-primary); text-align: center; display: block;">Preparando arquivo...</label>
-                <progress id="progress-bar" value="0" max="100" style="margin-top: 0.5rem;"></progress>
+            <div class="sidebar-content">
+                <div class="sidebar-section-title">Menu Principal</div>
+                <button class="btn-sidebar outline" onclick="window.location.href='index.html'">🏠 Voltar ao Dashboard</button>
+                <button class="btn-sidebar outline" onclick="window.location.href='artigos.html'">📄 Gerenciar Artigos</button>
+                <button class="btn-sidebar outline" onclick="window.location.href='autores.html'">👥 Banco de Autores</button>
+                <button class="btn-sidebar outline" onclick="window.location.href='palavras-chave.html'">🔑 Palavras-chave</button>
+                
+                <hr style="margin: 1.5rem 0; border-color: #e2e8f0;">
+                
+                <div class="sidebar-section-title">ETL & Sincronização</div>
+                <button class="btn-sidebar active">☁️ Importação e Limpeza</button>
             </div>
-        </div>
-    </main>
+        </aside>
+
+        <main class="main-content">
+            <nav class="top-nav">
+                <h1 style="margin: 0; font-size: 1.25rem;">📥 Pipeline de Injeção de Dados</h1>
+                <span class="badge" style="background: #e0e7ff; color: #3730a3; padding: 0.4rem 0.8rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">
+                    Scopus CSV Parser
+                </span>
+            </nav>
+
+            <div class="grid-wrapper">
+                
+                <div class="import-card">
+                    <h2 style="text-align: center; margin-bottom: 0.5rem; font-weight: 700; color: #0f172a;">Sincronizar Arquivo CSV</h2>
+                    <p style="text-align: center; color: #64748b; margin-bottom: 2rem;">Carregue o arquivo de metadados extraído diretamente da plataforma Scopus.</p>
+                    
+                    <div class="upload-area">
+                        <span class="upload-icon">📄</span>
+                        <input type="file" id="csv-file" accept=".csv" style="margin: 0 auto; max-width: 300px; display: block;" />
+                    </div>
+
+                    <button id="import-btn" style="width: 100%; font-size: 1.1rem; padding: 1rem; font-weight: 600;">Iniciar Sincronização de Dados</button>
+                    
+                    <div class="progress-container" id="progress-container">
+                        <label id="status-text" style="font-weight: 600; color: var(--pico-primary); text-align: center; display: block; margin-bottom: 0.5rem;">Preparando arquivo...</label>
+                        <progress id="progress-bar" value="0" max="100" style="margin: 0;"></progress>
+                    </div>
+                </div>
+
+                <div class="danger-zone">
+                    <div class="danger-header">
+                        <span class="danger-icon">⚠️</span>
+                        <h3>Zona de Risco: Redefinição do Sistema</h3>
+                    </div>
+                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                        Esta ação irá limpar permanentemente todas as tabelas (Artigos, Autores, Palavras-chave e Relações) e <strong>reiniciar a contagem dos IDs para zero (Truncate Restart Identity)</strong>.
+                    </p>
+                    <button class="btn-danger outline" onclick="confirmarTruncate()">🗑️ Apagar Todos os Dados e Resetar IDs</button>
+                </div>
+
+            </div>
+        </main>
+    </div>
 
     <script type="module">
         import { supabaseClient, showToast } from './supabase-client.js';
 
+        // ==========================================
+        // 1. LÓGICA DE IMPORTAÇÃO CSV (MANTIDA E OTIMIZADA)
+        // ==========================================
         document.getElementById('import-btn').addEventListener('click', () => {
             const file = document.getElementById('csv-file').files[0];
             if (!file) {
@@ -73,14 +185,14 @@
                 complete: async function(results) {
                     const data = results.data;
                     progress.max = data.length;
-                    status.innerText = `Iniciando gravação de ${data.length} registros (Não feche a aba)...`;
+                    status.innerText = `A iniciar gravação de ${data.length} registos (Não feche a aba)...`;
 
                     for (let i = 0; i < data.length; i++) {
                         const row = data[i];
                         if (!row.Title) continue; 
                         
                         progress.value = i + 1;
-                        status.innerText = `Processando linha ${i+1} de ${data.length}...`;
+                        status.innerText = `A processar linha ${i+1} de ${data.length}...`;
 
                         try {
                             // 1. INSERIR ARTIGO
@@ -144,6 +256,36 @@
                 }
             });
         });
+
+        // ==========================================
+        // 2. LÓGICA DE TRUNCATE (RESET TOTAL)
+        // ==========================================
+        window.confirmarTruncate = async () => {
+            // Dupla confirmação de segurança para evitar cliques acidentais
+            const confirmacao1 = confirm("⚠️ ATENÇÃO: Esta ação é irreversível! Deseja apagar todos os dados do banco?");
+            if (!confirmacao1) return;
+
+            const confirmacao2 = prompt("Para confirmar, digite a palavra: APAGAR");
+            if (confirmacao2 !== "APAGAR") {
+                showToast("Ação cancelada. Palavra de segurança incorreta.", "error");
+                return;
+            }
+
+            try {
+                // Chama a Função RPC do Supabase que criámos no SQL Editor
+                const { error } = await supabaseClient.rpc('truncate_all_tables');
+
+                if (error) {
+                    throw error;
+                }
+
+                showToast("🔥 Banco de dados zerado! As IDs foram reiniciadas com sucesso.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Falha ao redefinir banco. Verificou se criou a função 'truncate_all_tables' no Supabase?", "error");
+            }
+        };
+
     </script>
 </body>
 </html>
