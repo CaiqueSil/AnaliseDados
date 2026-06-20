@@ -17,18 +17,21 @@
     --pico-primary: #06b6d4;          /* Azul Turquesa */
     --pico-primary-hover: #0891b2;    /* Turquesa Dark */
     
-    --text-main: #f1f5f9;
-    --text-muted: #94a3b8;
+    /* CORES DE TEXTO AJUSTADAS PARA ALTO CONTRASTE */
+    --text-white: #ffffff;            /* Para fundos escuros ou azuis */
+    --text-black: #000000;            /* Para fundos totalmente brancos/claros */
+    --text-main: #f8fafc;             /* Texto principal das tabelas (Cinza quase branco, alto realce) */
+    --text-muted: #94a3b8;            /* Para textos secundários sutis */
     --border-color: #334155;
 }
 
 body { 
     margin: 0; 
     overflow: hidden; 
-    color: var(--text-main);
+    color: var(--text-main); /* Realça as linhas de texto padrão */
     font-family: 'Inter', system-ui, sans-serif;
 }
-        
+
 .app-layout {
     display: flex;
     height: 100vh;
@@ -51,7 +54,7 @@ body {
 .sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border-color);
-    background: #131c2e; /* Tom ligeiramente mais escuro para o topo */
+    background: #131c2e; 
 }
 
 .sidebar-content { padding: 1.5rem; }
@@ -60,7 +63,7 @@ body {
     font-size: 0.75rem;
     text-transform: uppercase;
     font-weight: 700;
-    color: var(--pico-primary); /* Turquesa nos títulos de seção */
+    color: var(--pico-primary); /* Turquesa */
     letter-spacing: 0.05em;
     margin-bottom: 1rem;
 }
@@ -126,7 +129,7 @@ body {
 
 .db-grid th {
     background-color: var(--pico-surface-light);
-    color: var(--pico-primary); /* Cabeçalho destacado em turquesa */
+    color: var(--pico-primary); /* Mantém o destaque visual do cabeçalho */
     font-weight: 700;
     text-transform: uppercase;
     font-size: 0.75rem;
@@ -135,8 +138,9 @@ body {
     z-index: 10;
 }
 
+/* Linhas de texto normais da tabela com cor de alto realce */
 .db-grid td {
-    color: var(--text-main);
+    color: var(--text-main); 
 }
 
 .col-text-truncated {
@@ -153,16 +157,30 @@ body {
     white-space: normal !important;
     word-wrap: break-word;
     line-height: 1.5;
-    color: #cbd5e1; /* Texto legível no fundo escuro */
+    color: var(--text-main); /* Realça também os blocos expandidos */
     text-align: justify;
 }
 
-/* Tratamento para dados ausentes (estilo Dark) */
+/* Tratamento para dados ausentes */
 .cell-missing {
-    background-color: rgba(239, 68, 68, 0.1) !important; /* Vermelho translúcido suave */
-    color: #f87171; /* Vermelho mais claro para contraste */
+    background-color: rgba(239, 68, 68, 0.15) !important; 
+    color: #f87171; 
     font-style: italic;
-    font-weight: 500;
+    font-weight: 600;
+}
+
+/* --- ADICIONAIS DE CONTRASTE EXPLICITADOS --- */
+
+/* Força fonte branca onde houver qualquer fundo com a cor azul primária */
+.bg-primary, .btn-primary, [style*="background-color: var(--pico-primary)"] {
+    background-color: var(--pico-primary) !important;
+    color: var(--text-white) !important;
+}
+
+/* Força fonte preta caso algum elemento use fundo puramente branco neste layout */
+.bg-white, .card-white, [style*="background-color: white"], [style*="background-color: #fff"] {
+    background-color: #ffffff !important;
+    color: var(--text-black) !important;
 }
         /* Classe para exibir "SEM DADOS" de forma suave e elegante */
         .cell-no-data {
